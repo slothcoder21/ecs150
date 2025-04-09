@@ -2,12 +2,49 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
 #define CMDLINE_MAX 512 // Maximum Length of command line input 
+#define MAX_TOKENS 17 // 16 arguments
+
+/*
+Example of how parse should work:
+
+Given: "date -u"
+argv[0] = "date"
+argv[1] = "-u" 
+
+need a variable to keep track of tokens - argc
+*/
+
+
+int parse(char *str, char *argv[])
+{
+        int argc = 0; //keeps track of tokens found
+        
+        /*
+        strtok returns a pointer to the next token found in the string
+        strtok modifies the existing string, seperating the string into a series of tokens. if a delimeter is spotted
+        it replaces it with a '\0' to get rid of the delimiter
+        */
+        
+       char *token = strtok(str, " \t"); //Splits at delimeters and returns a pointer to the first token
+       //Loop through the string ensuring we don't go over the maximum number of tokens
+       while (token != NULL && argc < MAX_TOKENS - 1)
+       {
+               argv[argc++] = token;
+               token = strtok(NULL, " \t"); //stores each token in the array argv[argc++]
+       }
+       argv[argc] = NULL;
+
+       return argc; //Returns the number of tokens found
+       
+}
 
 int main(void)
 {
         char cmd[CMDLINE_MAX]; //Array that stores the command entered by the user 
+        char unedited_cmd[CMDLINE_MAX];
         char *eof; //A pointer that will help detect end-of-file conditions
 
         while(1)
@@ -24,7 +61,13 @@ int main(void)
                 if (!eof) // If fgets returns NULL indicating EOF, then command exits
                 {
                         strncpy(cmd, "exit\n", CMDLINE_MAX); 
+                        strncpy(unedited_cmd, "exit\n", CMDLINE_MAX); 
                 }
+                else
+                {
+                        strncpy(unedited_cmd, cmd , CMDLINE_MAX);
+                }
+ 
                 /*Print command line if stdin is not provided by terminal*/
                 if (!isatty(STDIN_FILENO)) // Checks if the standard input is not coming from a terminal
                 {
@@ -39,33 +82,39 @@ int main(void)
                         *nl = '\0';
                 }
 
+                // Removes the newline from unedited_cmd
+                nl = strchr(unedited_cmd, '\n');
+                if (nl)
+                {
+                        *nl = '\0';
+                }  
+
                 /* Builtin Command */
                 if (!strcmp(cmd, "exit"))
                 {
                         fprintf(stderr, "Bye...\n");
+                        fprintf(stderr,"+ completed 'exit' [0]\n");
+                        exit(0);
                 }
 
-                pid_t pid = fork();
+                char *argv[MAX_TOKENS]; //storing arguments for the parsed array
+                parse(cmd, argv); // parsing command by tokenizing 
 
-                if(pid == 0)
+                pid_t pid = fork(); //create child process
+                if(pid == 0) //checks if child
                 {
-                        char *argv[2];
-                        argv[0] = cmd;
-                        argv[1] = NULL;
-
-                        execvp(argv[0], argv);
-
-                        perror("execvp error");
-                        exit(1);
+                       execvp(argv[0], argv);
+                       perror("execvp error");
+                       exit(1);
                 }
-                else if (pid > 0)
+                else if (pid > 0) //checks if parent
                 {
                         int status;
                         waitpid(pid, &status, 0);
-                        int exit_status = WEXITSTATUS(status);
-                        fprintf(stderr, "+ completed '%s' [%d]\n", cmd, exit_status);
+                        int exit_status = WEXITSTATUS(status); //exit status from child 
+                        fprintf(stderr, "+ completed '%s' [%d]\n", unedited_cmd, exit_status);
                 }
-                else
+                else // if fork fails
                 {
                         perror("fork error");
                         exit(1);
