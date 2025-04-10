@@ -8,7 +8,7 @@
 #define MAX_TOKENS 17 // 16 arguments
 
 /*
-Example of how parse should work:
+how parse should work in my brain??:
 
 Given: "date -u"
 argv[0] = "date"
@@ -17,28 +17,32 @@ argv[1] = "-u"
 need a variable to keep track of tokens - argc
 */
 
-
 int parse(char *str, char *argv[])
 {
-        int argc = 0; //keeps track of tokens found
+        int argCount = 0; //keeps track of tokens found
         
         /*
         strtok returns a pointer to the next token found in the string
-        strtok modifies the existing string, seperating the string into a series of tokens. if a delimeter is spotted
+        strtok modifies the existing string, separating the string into a series of tokens. if a delimiter is spotted
         it replaces it with a '\0' to get rid of the delimiter
         */
         
-       char *token = strtok(str, " \t"); //Splits at delimeters and returns a pointer to the first token
-       //Loop through the string ensuring we don't go over the maximum number of tokens
-       while (token != NULL && argc < MAX_TOKENS - 1)
-       {
-               argv[argc++] = token;
-               token = strtok(NULL, " \t"); //stores each token in the array argv[argc++]
-       }
-       argv[argc] = NULL;
+        char *token = strtok(str, " \t"); //Splits at delimiters and returns a pointer to the first token
+        //Loop through the string ensuring we don't go over the maximum number of tokens
+        while (token != NULL && argCount < MAX_TOKENS - 1)
+        {
+                argv[argCount++] = token;
+                token = strtok(NULL, " \t"); //stores each token in the array argv[argc++]
+        }
 
-       return argc; //Returns the number of tokens found
-       
+        if(token != NULL)
+        {
+                return -1;
+        }
+
+        argv[argCount] = NULL;
+
+        return argCount; //Returns the number of tokens found
 }
 
 int main(void)
@@ -54,7 +58,7 @@ int main(void)
         
                 /*Print Prompt*/
                 printf("sshell@ucd$ ");
-                fflush(stdout); //Flushes the output buffer to ensure its displayed
+                fflush(stdout); //Flushes the output buffer to ensure it's displayed
         
                 /*Get Command Line*/
                 eof = fgets(cmd, CMDLINE_MAX, stdin); //Reads a line from standard input into the cmd array
@@ -75,7 +79,7 @@ int main(void)
                         fflush(stdout);
                 }
 
-                /*Remove trainiling newline from command line*/
+                /*Remove trailing newline from command line*/
                 nl = strchr(cmd, '\n'); //Find newline character using cmd 
                 if (nl)
                 {
@@ -97,15 +101,23 @@ int main(void)
                         exit(0);
                 }
 
+                
+
                 char *argv[MAX_TOKENS]; //storing arguments for the parsed array
-                parse(cmd, argv); // parsing command by tokenizing 
+                int argCount = parse(cmd, argv); // parsing command by tokenizing 
+
+                if(argCount == -1)
+                {
+                        fprintf(stderr, "Error: too many process arguments\n");
+                        continue;
+                }
 
                 pid_t pid = fork(); //create child process
                 if(pid == 0) //checks if child
                 {
-                       execvp(argv[0], argv);
-                       perror("execvp error");
-                       exit(1);
+                        execvp(argv[0], argv);
+                        fprintf(stderr, "Error: command not found\n"); // match expected output
+                        exit(1);
                 }
                 else if (pid > 0) //checks if parent
                 {
@@ -122,5 +134,4 @@ int main(void)
         }
 
         return EXIT_SUCCESS;
-
 }
