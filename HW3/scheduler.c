@@ -61,9 +61,7 @@ int scheduler_run(void (*task_func)(int), int task_cnt, const int *task_sched)
     }
     free(stacks);
     free(ctx);
-
-    return 0;
-
+    
 	return 0;
 }
 
