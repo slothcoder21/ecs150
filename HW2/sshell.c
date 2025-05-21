@@ -6,15 +6,15 @@
 #include <ctype.h>
 #include <sys/wait.h>
 
-#define CMDLINE_MAX 512
-#define ARGS_MAX 17
+#define CMDLINE_MAX 512 //maximum command line length
+#define ARGS_MAX 17 // maximum number of arguments
 #define CMDS_MAX 8 // Piping worst case scenario (pause)
 
-struct command {
+struct command { //just for processing each command
         char *argv[ARGS_MAX];
 };
 
-struct chain {
+struct chain { // struct for storing piping commands
         int count; 
         struct command commands[CMDS_MAX]; 
 };
@@ -127,7 +127,7 @@ int main(void)
                                 }
                         }
 
-                        if (all_done) //check if done
+                        if (all_done) //check if all background processes have been completed done
                         {
                                 fprintf(stderr, "+ completed '%s'", bg_cmd);
                                 for (int i = 0; i < bg_count; i++)
